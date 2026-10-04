@@ -45,7 +45,6 @@ The project is built with **React + TypeScript** on the frontend and **NestJS + 
 developer-blog/
 ├── frontend/
 │   ├── src/
-│   ├── public/
 │   └── package.json
 │
 ├── backend/
@@ -93,12 +92,6 @@ cd frontend
 npm install
 ```
 
-Create a `.env` file:
-
-```env
-VITE_API_URL=http://localhost:3000
-```
-
 Start the frontend:
 
 ```bash
@@ -128,12 +121,6 @@ DATABASE_URL=
 JWT_SECRET=
 ```
 
-### Frontend
-
-```env
-VITE_API_URL=
-```
-
 > Do not commit `.env` files or sensitive credentials to the repository.
 
 ## Development
@@ -154,4 +141,4 @@ npm run dev
 
 ## License
 
-This project is for educational and portfolio purposes.
+This project is for educational purposes.
