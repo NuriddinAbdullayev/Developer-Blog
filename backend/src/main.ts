@@ -1,23 +1,31 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule, ObserveInstrument } from './app.module.js';
-import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     instrument: ObserveInstrument,
   });
 
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
+
   const config = new DocumentBuilder()
-  .setTitle("Developer-Blog API")
-  .setDescription("Backend API documentation")
-  .setVersion("1.0")
-  .addBearerAuth()
-  .build()
+    .setTitle('Developer-Blog API')
+    .setDescription('Backend API documentation')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
 
-  const document = SwaggerModule
-    .createDocument(app, config)
+  const document = SwaggerModule.createDocument(app, config);
 
-  SwaggerModule.setup("api", app, document)
+  SwaggerModule.setup('api', app, document);
 
   await app.listen(process.env.PORT ?? 3000);
 
@@ -29,4 +37,5 @@ async function bootstrap() {
     `Swagger: http://localhost:${process.env.PORT ?? 3000}/api`,
   );
 }
+
 await bootstrap();
