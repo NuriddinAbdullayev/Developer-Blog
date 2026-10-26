@@ -1,6 +1,7 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RegisterDto } from './dto/register.dto.js';
+import { LoginDto } from './dto/login.dto.js';
 import * as bcrypt from 'bcrypt';
 import { Prisma } from '@prisma/client';
 
@@ -18,6 +19,7 @@ export class AuthService {
       },
       select: {
         email: true,
+        password: false
       }
     });
 
@@ -39,6 +41,7 @@ export class AuthService {
           name: true,
           email: true,
           createdAt: true,
+          password: false
         }
       });
     } catch (error) {
@@ -47,6 +50,31 @@ export class AuthService {
       }
 
       throw error
+    }
+  }
+
+  async login(dto: LoginDto) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        email: dto.email
+      },
+    })
+
+    if(!user) {
+      throw new UnauthorizedException("Invalid email or password")
+    }
+
+    const isPasswordValid = await bcrypt.compare(
+      dto.password,
+      user.password,
+    )
+
+    if(!isPasswordValid) {
+      throw new UnauthorizedException("Invalid email or password")
+    }
+
+    return {
+      message: "Login successful"
     }
   }
 }
