@@ -4,11 +4,13 @@ import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import * as bcrypt from 'bcrypt';
 import { Prisma } from '@prisma/client';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
+    private jwtService: JwtService, 
   ) {}
 
   async register(dto: RegisterDto) {
@@ -73,8 +75,14 @@ export class AuthService {
       throw new UnauthorizedException("Invalid email or password")
     }
 
+    const accessToken = await this.jwtService.signAsync({
+      sub: user.id,
+      email: user.email,
+    })
+
     return {
-      message: "Login successful"
+      message: "Login successful",
+      access_token: accessToken
     }
   }
 }
