@@ -1,40 +1,12 @@
-import { Injectable } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto.js';
-import { UpdateUserDto } from './dto/update-user.dto.js';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
-
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService){}
-
-  create(createUserDto: CreateUserDto) {
-    return 'This action adds a new user';
-  }
-
-  async findAll() {
-    return this.prisma.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        createdAt: true
-      }
-    });
-  }
-
-  findByEmail(email: string) {
-    return this.prisma.user.findUnique({
-      where: {
-        email
-      }
-    });
-  }
-
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+  constructor(private readonly prisma: PrismaService) {}
+  findAll() { return this.prisma.user.findMany({ select: { id: true, name: true, createdAt: true, _count: { select: { posts: true } } }, orderBy: { createdAt: 'desc' } }); }
+  async findOne(id: string) {
+    const user = await this.prisma.user.findUnique({ where: { id }, select: { id: true, name: true, createdAt: true, posts: { where: { published: true }, select: { id: true, title: true, content: true, createdAt: true, tags: { select: { name: true } } }, orderBy: { createdAt: 'desc' } } } });
+    if (!user) throw new NotFoundException('Author not found');
+    return user;
   }
 }

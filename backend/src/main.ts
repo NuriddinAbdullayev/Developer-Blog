@@ -1,41 +1,16 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule, ObserveInstrument } from './app.module.js';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { AppModule } from './app.module.js';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
-    instrument: ObserveInstrument,
-  });
-
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
-
-  const config = new DocumentBuilder()
-    .setTitle('Developer-Blog API')
-    .setDescription('Backend API documentation')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-
-  const document = SwaggerModule.createDocument(app, config);
-
-  SwaggerModule.setup('api/docs', app, document);
-
-  await app.listen(process.env.PORT ?? 3000);
-
-  console.log(
-    `Server running on http://localhost:${process.env.PORT ?? 3000}`,
-  );
-
-  console.log(
-    `Swagger: http://localhost:${process.env.PORT ?? 3000}/api/docs`,
-  );
+  const app = await NestFactory.create(AppModule);
+  app.enableCors({ origin: process.env.CORS_ORIGIN?.split(',').map(value => value.trim()) ?? ['http://localhost:5173'], credentials: true });
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
+  const config = new DocumentBuilder().setTitle('Devnotes API').setDescription('Stories, authors, and community interactions').setVersion('1.0').addBearerAuth().build();
+  SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, config));
+  const port = Number(process.env.PORT ?? 3000);
+  await app.listen(port, '0.0.0.0');
+  console.log(`Devnotes API listening on port ${port}`);
 }
-
 await bootstrap();

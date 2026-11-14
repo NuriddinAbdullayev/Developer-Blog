@@ -1,144 +1,54 @@
-# Developer Blog
+# devnotes
 
-A full-stack developer blog website where developers can share articles, knowledge, and experiences related to software development.
-
-The project is built with **React + TypeScript** on the frontend and **NestJS + TypeScript** on the backend.
-
-## Tech Stack
-
-### Frontend
-
-* React
-* TypeScript
-* React Router
-* TanStack Query
-* Axios
-
-### Backend
-
-* NestJS
-* TypeScript
-* REST API
-* Authentication & Authorization
-
-### Database
-
-* PostgreSQL
+A responsive developer writing community built with React, TypeScript, NestJS, Prisma, and PostgreSQL.
 
 ## Features
 
-* User registration and authentication
-* User profiles
-* Create, edit, and delete blog posts
-* View and search articles
-* Categories and tags
-* Comments
-* Like articles
-* Pagination
-* Role-based access control
-* Protected routes
-* Responsive interface
+- Public story feed with search, topics, pagination, and author details
+- Account registration and login using bcrypt and short-lived JWTs
+- Authenticated story publishing, editing, and deletion with author ownership checks
+- Authenticated likes and comments
+- Request validation, API throttling, CORS configuration, and Swagger docs
+- Responsive frontend and Docker Compose setup for the API and PostgreSQL
 
-## Project Structure
+## Run locally
 
-```text
-developer-blog/
-├── frontend/
-│   ├── src/
-│   └── package.json
-│
-├── backend/
-│   ├── src/
-│   └── package.json
-│
-└── README.md
-```
+Requirements: Node.js 22+, npm, and Docker (or a PostgreSQL 16 instance).
 
-## Getting Started
+1. Copy backend/.env.example to backend/.env. Set DATABASE_URL to your PostgreSQL URL and replace JWT_SECRET with a random secret (openssl rand -base64 48).
+2. Start PostgreSQL with Docker Compose: docker compose up -d db.
+3. Install and prepare the API:
 
-### 1. Clone the repository
+    cd backend
+    npm ci
+    npm run db:generate
+    npm run db:dev
+    npm run start:dev
 
-```bash
-git clone <repository-url>
-cd developer-blog
-```
+4. In another terminal, install and start the frontend:
 
-### 2. Setup the Backend
+    cd frontend
+    cp .env.example .env.local
+    npm ci
+    npm run dev
 
-```bash
-cd backend
-npm install
-```
+Frontend: http://localhost:5173 · API: http://localhost:3000 · API docs: http://localhost:3000/api/docs
 
-Create a `.env` file:
+The frontend can render a small local preview when the API cannot be reached. Stories are stored in PostgreSQL and the list will be empty on a fresh database until you publish content.
 
-```env
-DATABASE_URL=your_database_url
-JWT_SECRET=your_jwt_secret
-```
+## Deploy with Docker Compose
 
-Start the development server:
+Set JWT_SECRET to a long random value and optionally set POSTGRES_PASSWORD and CORS_ORIGIN, then run:
 
-```bash
-npm run start:dev
-```
+    JWT_SECRET="$(openssl rand -base64 48)" CORS_ORIGIN="https://your-frontend.example.com" docker compose up --build -d
 
-### 3. Setup the Frontend
+This starts the frontend at http://localhost:8080, the API at http://localhost:3000, and PostgreSQL. The API runs Prisma migrations on startup. For hosted deployment, use managed PostgreSQL with backups and deploy both Docker services. Set DATABASE_URL, JWT_SECRET, PORT=3000, and CORS_ORIGIN to your public frontend origin for the API; set VITE_API_URL to your public API origin at frontend build time. Put both services behind HTTPS in production.
 
-Open another terminal:
+Never commit .env files or production credentials. The frontend's VITE_API_URL is public configuration and must not contain secrets.
 
-```bash
-cd frontend
-npm install
-```
+## Useful commands
 
-Start the frontend:
-
-```bash
-npm run dev
-```
-
-## API
-
-The backend provides a REST API for:
-
-* Authentication
-* Users
-* Blog posts
-* Categories
-* Tags
-* Comments
-* Likes
-
-The API is served by the NestJS backend.
-
-## Environment Variables
-
-### Backend
-
-```env
-DATABASE_URL=
-JWT_SECRET=
-```
-
-> Do not commit `.env` files or sensitive credentials to the repository.
-
-## Development
-
-Run the backend and frontend separately during development:
-
-```bash
-# Backend
-cd backend
-npm run start:dev
-```
-
-```bash
-# Frontend
-cd frontend
-npm run dev
-```
-
-## License
-
-This project is for educational purposes.
+- cd backend && npm run build — generate Prisma client and compile the API
+- cd backend && npm run db:migrate — apply checked-in migrations to the configured database
+- cd frontend && npm run build — type-check and build the static frontend
+- cd frontend && npm run lint — lint frontend source

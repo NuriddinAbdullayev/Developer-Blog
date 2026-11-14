@@ -1,9 +1,57 @@
-import React from 'react'
+import { useEffect, useMemo, useState } from 'react'
+
+type Post = { id: string; title: string; content: string; published: boolean; createdAt: string; author: { name: string }; tags: { name: string }[]; likes?: { id: string }[] }
+type User = { id: string; name: string; email: string }
+const API = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
+const samples: Post[] = [
+  { id: '1', title: 'The quiet craft of writing code that lasts', content: 'Good software is less about cleverness and more about making the next change feel obvious. A few habits that help teams build things they can trust.', published: true, createdAt: '2026-11-10', author: { name: 'Maya Chen' }, tags: [{ name: 'Engineering' }, { name: 'Career' }] },
+  { id: '2', title: 'A practical guide to shipping your first API', content: 'From a clear contract to useful error messages, here are the small decisions that make an API pleasant to build on.', published: true, createdAt: '2026-11-08', author: { name: 'Alex Rivera' }, tags: [{ name: 'Backend' }, { name: 'Tutorial' }] },
+  { id: '3', title: 'What I learned building with TypeScript', content: 'Types are a conversation with the future version of you. Keep them honest, keep them useful, and let the compiler do the tedious work.', published: true, createdAt: '2026-11-04', author: { name: 'Jordan Lee' }, tags: [{ name: 'TypeScript' }, { name: 'Learning' }] },
+]
+const colors = ['#d7e9dd', '#f2dfce', '#dce5f2', '#eee1f2']
 
 export default function App() {
-  return (
-    <div>
-      
-    </div>
-  )
+  const [posts, setPosts] = useState<Post[]>([])
+  const [user, setUser] = useState<User | null>(() => { try { return JSON.parse(localStorage.getItem('db-user') || 'null') } catch { return null } })
+  const [token, setToken] = useState(() => localStorage.getItem('db-token') || '')
+  const [query, setQuery] = useState('')
+  const [activeTag, setActiveTag] = useState('All stories')
+  const [dialog, setDialog] = useState<'login' | 'register' | 'write' | null>(null)
+  const [notice, setNotice] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => { fetch(`${API}/posts`).then(r => r.ok ? r.json() : []).then((data: Post[]) => setPosts(Array.isArray(data) ? data : [])).catch(() => setPosts(samples)) }, [])
+  const tags = useMemo(() => ['All stories', ...new Set(posts.flatMap(p => p.tags?.map(t => t.name) ?? []))], [posts])
+  const visible = posts.filter(p => (activeTag === 'All stories' || p.tags?.some(t => t.name === activeTag)) && `${p.title} ${p.content} ${p.author?.name}`.toLowerCase().includes(query.toLowerCase()))
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault(); setBusy(true); setNotice('')
+    const form = new FormData(e.currentTarget)
+    try {
+      if (dialog === 'login' || dialog === 'register') {
+        const response = await fetch(`${API}/auth/${dialog}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.fromEntries(form)) })
+        const data = await response.json(); if (!response.ok) throw new Error(data.message || 'Please check your details.')
+        const access = data.access_token || data.accessToken
+        const account = data.user ?? data
+        if (access) { localStorage.setItem('db-token', access); setToken(access) }
+        if (account.id) { localStorage.setItem('db-user', JSON.stringify(account)); setUser(account) }
+        if (!access) { setNotice('Account created. You can now sign in.'); setDialog('login') } else setDialog(null)
+      } else {
+        const response = await fetch(`${API}/posts`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ title: form.get('title'), content: form.get('content'), tags: String(form.get('tags') || '').split(',').map(t => t.trim()).filter(Boolean), published: true }) })
+        const data = await response.json(); if (!response.ok) throw new Error(data.message || 'Could not publish your story.')
+        setPosts(current => [data, ...current]); setDialog(null)
+      }
+    } catch (error) { setNotice(error instanceof Error ? error.message : 'Something went wrong.') } finally { setBusy(false) }
+  }
+  function logout() { localStorage.removeItem('db-token'); localStorage.removeItem('db-user'); setToken(''); setUser(null) }
+
+  return <div className="site-shell">
+    <header className="topbar"><a className="brand" href="#top"><span className="brand-mark">d.</span><span>dev<span className="brand-light">notes</span></span></a><nav className="desktop-nav"><a href="#stories">Discover</a><a href="#about">About</a></nav><div className="top-actions"><label className="search-box"><span>⌕</span><input aria-label="Search stories" placeholder="Search stories" value={query} onChange={e => setQuery(e.target.value)} /><kbd>⌘ K</kbd></label>{user ? <><button className="write-btn" onClick={() => setDialog('write')}>＋ Write</button><button className="avatar" title="Sign out" onClick={logout}>{user.name.slice(0, 1).toUpperCase()}</button></> : <><button className="login-btn" onClick={() => setDialog('login')}>Log in</button><button className="join-btn" onClick={() => setDialog('register')}>Join devnotes <span>↗</span></button></>}</div></header>
+    <main id="top"><section className="hero"><div className="hero-copy"><div className="eyebrow"><span className="eyebrow-dot"/> A HOME FOR DEVELOPER STORIES</div><h1>Ideas worth<br/>shipping <em>forward.</em></h1><p>A thoughtful corner of the internet for people who build things. Learn from the wins, the bugs, and everything in between.</p><div className="hero-actions"><a className="primary-btn" href="#stories">Explore stories <span>↗</span></a><a className="text-link" href="#about">Our little corner <span>→</span></a></div><div className="reader-note"><div className="avatar-stack"><span>M</span><span>A</span><span>J</span><span>+</span></div><span>Good ideas grow <b>better together</b></span></div></div><div className="hero-art"><div className="art-orbit orbit-one"/><div className="art-orbit orbit-two"/><div className="sun-disc"/><div className="art-card card-back"><span className="mini-label">FIELD NOTES · 014</span><div className="card-lines"><i/><i/><i/></div><div className="card-dot"/></div><div className="art-card card-front"><div className="card-top"><span>THE GOOD BUILD</span><span>✳</span></div><div className="code-window"><b>01</b><span>ideas<span className="code-purple">.</span>ship<span className="code-purple">(</span></span><br/><b>02</b><span className="code-indent">with <span className="code-green">care</span><span className="code-purple">)</span></span><br/><b>03</b><span className="code-dim">// repeat tomorrow</span></div><div className="card-foot"><span>NOTES FROM THE BUILD</span><span>✦ ✦ ✦</span></div></div><div className="floating-note note-top">✳ &nbsp; MADE BY BUILDERS</div><div className="floating-note note-bottom"><span className="note-icon">↗</span><span>Curiosity<br/><b>looks good on you.</b></span></div><div className="sparkle sparkle-a">✳</div><div className="sparkle sparkle-b">✦</div></div></section>
+    <section className="stat-strip"><div><b>01</b><span>Curious minds</span></div><i/><div><b>∞</b><span>Things to learn</span></div><i/><div><b>✳</b><span>Made with care</span></div><span className="strip-caption">A community for the craft of building.</span></section>
+    <section id="stories" className="stories-section"><div className="section-heading"><div><div className="eyebrow section-eyebrow">THE LATEST THINKING</div><h2>Fresh from the <em>build.</em></h2></div><a href="#stories" className="all-link">All stories <span>↗</span></a></div><div className="filters">{tags.map((tag, i) => <button key={tag} onClick={() => setActiveTag(tag)} className={`filter ${activeTag === tag ? 'selected' : ''}`}>{i === 0 ? '✳ ' : ''}{tag}</button>)}</div><div className="story-grid">{visible.map((post, index) => <article className="story-card" key={post.id}><div className="story-art" style={{ background: colors[index % colors.length] }}><span className="art-index">{String(index + 1).padStart(2, '0')} / NOTES</span><div className={`story-symbol symbol-${index % 3}`}>{index % 3 === 0 ? <><span>✳</span><i/><b/></> : index % 3 === 1 ? <><span className="symbol-cube">◈</span><i/><b/></> : <><span className="symbol-code">&lt;/&gt;</span><i/><b/></>}</div><span className="read-time">{Math.max(3, Math.ceil(post.content.length / 850))} MIN READ</span></div><div className="story-meta"><span>{post.tags?.[0]?.name ?? 'Engineering'}</span><i/> {new Date(post.createdAt).toLocaleDateString('en', { month: 'short', day: 'numeric' })}</div><h3>{post.title}</h3><p>{post.content}</p><div className="story-footer"><div className="author-avatar" style={{ background: colors[(index + 1) % colors.length] }}>{post.author?.name?.slice(0, 1) ?? 'D'}</div><span>{post.author?.name ?? 'Devnotes community'}</span><button aria-label="Open story" onClick={() => setNotice(`${post.title} — ${post.content}`)}>↗</button></div></article>)}</div>{visible.length === 0 && <div className="empty-state">No stories found. Try another search or topic.</div>}</section>
+    <section className="newsletter" id="about"><div className="newsletter-spark">✳</div><div><span className="eyebrow">A SMALL NOTE, NOW AND THEN</span><h2>Good reads. <em>No noise.</em></h2><p>Get the best of devnotes delivered when there’s something worth sharing.</p></div><form className="newsletter-form" onSubmit={e => { e.preventDefault(); setNotice('You’re on the list. Watch your inbox!'); (e.target as HTMLFormElement).reset() }}><input type="email" required placeholder="you@somewhere.dev" aria-label="Email address"/><button type="submit">Count me in <span>↗</span></button><small>Only the good stuff. Unsubscribe whenever.</small></form></section></main>
+    <footer><a className="brand" href="#top"><span className="brand-mark">d.</span><span>dev<span className="brand-light">notes</span></span></a><span>Built for the love of figuring it out. <b>© 2026 devnotes</b></span><div><a href="#stories">Stories</a><a href="#about">About</a><a href="mailto:hello@devnotes.example">Say hello ↗</a></div></footer>
+    {dialog && <div className="modal-backdrop" onClick={e => { if (e.target === e.currentTarget) setDialog(null) }}><form className="modal" onSubmit={submit}><button type="button" className="modal-close" onClick={() => setDialog(null)}>×</button><span className="eyebrow">{dialog === 'write' ? 'YOUR NEXT IDEA' : 'WELCOME TO DEVNOTES'}</span><h2>{dialog === 'write' ? 'Write a story.' : dialog === 'login' ? 'Good to have you back.' : 'Find your people.'}</h2><p>{dialog === 'write' ? 'Share something you learned along the way.' : 'A little space for people who love to build.'}</p>{dialog !== 'write' ? <>{dialog === 'register' && <label>Your name<input name="name" required minLength={3} maxLength={50} placeholder="Ada Lovelace"/></label>}<label>Email address<input name="email" type="email" required placeholder="you@example.com"/></label><label>Password<input name="password" type="password" required minLength={8} placeholder="At least 8 characters"/></label></> : <><label>Title<input name="title" required maxLength={140} placeholder="A title that makes someone curious"/></label><label>Topics <small>(comma separated)</small><input name="tags" placeholder="TypeScript, Career"/></label><label>Your story<textarea name="content" required minLength={30} rows={7} placeholder="What did you learn?"/></label></>}{notice && <div className="form-notice">{notice}</div>}<button className="modal-submit" disabled={busy || (!token && dialog === 'write')}>{busy ? 'One moment…' : dialog === 'login' ? 'Log in' : dialog === 'register' ? 'Create account' : 'Publish story'} <span>↗</span></button>{dialog !== 'write' && <button type="button" className="switch-auth" onClick={() => { setNotice(''); setDialog(dialog === 'login' ? 'register' : 'login') }}>{dialog === 'login' ? 'New around here? Join the community' : 'Already have an account? Log in'}</button>}</form></div>}
+    {notice && !dialog && <button className="toast" onClick={() => setNotice('')}>{notice} <span>×</span></button>}
+  </div>
 }
